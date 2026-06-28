@@ -609,8 +609,14 @@ static const char* GetHostInfo()
 
     ptr += sprintf( ptr, "User: %s@%s\n", user, hostname );
 #else
+#ifdef __SWITCH__
+#define _POSIX_HOST_NAME_MAX 10
+#define _POSIX_LOGIN_NAME_MAX 10
+#endif
     char hostname[_POSIX_HOST_NAME_MAX]{};
+#ifndef __SWITCH__
     gethostname( hostname, _POSIX_HOST_NAME_MAX );
+#endif
 #  if defined __ANDROID__
     const auto login = getlogin();
     if( login )
@@ -623,7 +629,9 @@ static const char* GetHostInfo()
     }
 #  else
     char user[_POSIX_LOGIN_NAME_MAX]{};
+#ifndef __SWITCH__
     getlogin_r( user, _POSIX_LOGIN_NAME_MAX );
+#endif
     ptr += sprintf( ptr, "User: %s@%s\n", user, hostname );
 #  endif
 #endif
@@ -933,7 +941,7 @@ static Thread* s_symbolThread;
 std::atomic<bool> s_symbolThreadGone { false };
 #endif
 #ifdef TRACY_HAS_SYSTEM_TRACING
-static std::atomic<Thread*> s_sysTraceThread = nullptr;
+static std::atomic<Thread*> s_sysTraceThread;
 #endif
 
 #if defined __linux__ && !defined TRACY_NO_CRASH_HANDLER
@@ -1540,12 +1548,18 @@ Profiler::Profiler()
     m_safeSendBuffer = (char*)tracy_malloc( SafeSendBufferSize );
 
 #ifndef _WIN32
+#ifndef __SWITCH__
     pipe(m_pipe);
+#endif
 #  if defined __APPLE__ || defined BSD
     // FreeBSD/XNU don't have F_SETPIPE_SZ, so use the default
     m_pipeBufSize = 16384;
 #  else
     m_pipeBufSize = (int)(ptrdiff_t)SafeSendBufferSize;
+#ifdef __SWITCH__
+#define F_SETPIPE_SZ 16384
+#define F_GETPIPE_SZ 16384
+#endif
     while( fcntl( m_pipe[0], F_SETPIPE_SZ, m_pipeBufSize ) < 0 && errno == EPERM ) m_pipeBufSize /= 2; // too big; reduce
     m_pipeBufSize = fcntl( m_pipe[0], F_GETPIPE_SZ );
 #  endif
@@ -4184,6 +4198,7 @@ void Profiler::HandleSymbolCodeQuery( uint64_t symbol, uint32_t size )
 void Profiler::HandleSourceCodeQuery( char* data, char* image, uint32_t id )
 {
     bool ok = false;
+#ifndef __SWITCH__
     FILE* f = fopen( data, "rb" );
     if( f )
     {
@@ -4250,6 +4265,7 @@ void Profiler::HandleSourceCodeQuery( char* data, char* image, uint32_t id )
         TracyDebug( "DebugInfo invalid query fn: %s, image: %s\n", data, image );
     }
 #endif
+#endif //!defined __SWITCH__
 
     if( !ok && m_sourceCallback )
     {

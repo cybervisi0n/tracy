@@ -54,6 +54,10 @@ extern "C" typedef HRESULT (WINAPI *t_GetThreadDescription)( HANDLE, PWSTR* );
 #  include "TracyAlloc.hpp"
 #endif
 
+#ifdef __SWITCH__
+#include "switch.h"
+#endif
+
 namespace tracy
 {
 
@@ -88,6 +92,8 @@ TRACY_API uint32_t GetThreadHandleImpl()
 #elif defined __EMSCRIPTEN__
     // Not supported, but let it compile.
     return 0;
+#elif defined __SWITCH__
+    return (uint32_t) threadGetCurHandle();
 #else
     // To add support for a platform, retrieve and return the kernel thread identifier here.
     //
