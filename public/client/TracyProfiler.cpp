@@ -1549,17 +1549,14 @@ Profiler::Profiler()
 
 #ifndef _WIN32
 #ifndef __SWITCH__
+    //TODO: Fix linker error
     pipe(m_pipe);
 #endif
-#  if defined __APPLE__ || defined BSD
-    // FreeBSD/XNU don't have F_SETPIPE_SZ, so use the default
+#  if defined __APPLE__ || defined BSD || defined __SWITCH__
+    // FreeBSD/XNU/Switch don't have F_SETPIPE_SZ, so use the default
     m_pipeBufSize = 16384;
 #  else
     m_pipeBufSize = (int)(ptrdiff_t)SafeSendBufferSize;
-#ifdef __SWITCH__
-#define F_SETPIPE_SZ 16384
-#define F_GETPIPE_SZ 16384
-#endif
     while( fcntl( m_pipe[0], F_SETPIPE_SZ, m_pipeBufSize ) < 0 && errno == EPERM ) m_pipeBufSize /= 2; // too big; reduce
     m_pipeBufSize = fcntl( m_pipe[0], F_GETPIPE_SZ );
 #  endif
